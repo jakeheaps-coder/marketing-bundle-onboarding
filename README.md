@@ -24,7 +24,7 @@ Edit `index.html` directly. Changes pushed to `main` deploy automatically via Gi
 
 ## Sharing
 
-Drop the URL into Slack — it should unfurl with the page title and description. Send to a teammate as soon as they're slated to join the marketing bundle so the multi-day approval flows (Steps 1 + 2) start in parallel.
+Send the URL to a teammate as soon as they're slated to join the marketing bundle so the multi-day approval flows (Steps 1 + 2) start in parallel.
 
 ## Author
 
