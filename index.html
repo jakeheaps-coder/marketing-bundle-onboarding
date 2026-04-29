@@ -171,14 +171,6 @@
     .installer-flow li strong { color: var(--neutral-900); font-weight: 600; }
     .installer-flow li code { font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; font-size: 0.78rem; background: var(--neutral-50); padding: 0.08rem 0.35rem; border-radius: 4px; color: var(--neutral-900); border: 1px solid var(--neutral-100); }
 
-    /* Manual fallback details (Step 5) */
-    .manual-fallback { margin-top: 2rem; border-top: 1px dashed var(--neutral-100); padding-top: 1.5rem; }
-    .manual-fallback summary { cursor: pointer; font-size: 0.85rem; font-weight: 600; color: var(--neutral-600); padding: 0.5rem 0.75rem; border-radius: var(--radius-sm); transition: all 0.2s ease; user-select: none; list-style: none; display: inline-flex; align-items: center; gap: 0.4rem; }
-    .manual-fallback summary::-webkit-details-marker { display: none; }
-    .manual-fallback summary::before { content: '▸'; display: inline-block; transition: transform 0.2s ease; font-size: 0.7rem; }
-    .manual-fallback[open] summary::before { transform: rotate(90deg); }
-    .manual-fallback summary:hover { color: var(--neutral-900); background: var(--neutral-50); }
-    .manual-fallback summary:focus-visible { outline: 2px solid var(--domo-blue-dark); outline-offset: 2px; }
 
     @media (max-width: 768px) {
       .hero { padding: 5rem 1.5rem 3.5rem; }
@@ -334,13 +326,13 @@
       <div class="step-number" aria-hidden="true">5</div>
       <span class="step-meta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>~10 minutes (after Step 2 is approved)</span>
       <h2 id="step-5-heading">Connect GitHub + install the bundle</h2>
-      <p class="step-desc">Once your Domo GitHub account is provisioned (Step 2), download the AI-driven installer below. Drag it into Claude Code, type "follow this file," and Claude installs Homebrew, GitHub CLI, the bundle, and scaffolds your workspace — without you ever opening a terminal.</p>
+      <p class="step-desc">Once your Domo GitHub account is provisioned (Step 2), download the installer below, drag it into Claude Code, and type "follow this file." Claude does the rest — without you ever opening a terminal.</p>
 
-      <!-- AI-driven path (primary) -->
+      <!-- AI-driven installer (the entirety of Step 5) -->
       <div class="installer-card">
-        <span class="installer-badge">Recommended · No terminal needed</span>
-        <h3 class="installer-title">AI-driven installer</h3>
-        <p class="installer-desc">Claude Code does the install for you. You'll see <strong>one</strong> macOS password dialog, <strong>one</strong> GitHub authorize tab, and <strong>one</strong> VS Code reload. That's it.</p>
+        <span class="installer-badge">No terminal needed</span>
+        <h3 class="installer-title">Download the AI-driven installer</h3>
+        <p class="installer-desc">Claude Code installs Homebrew, GitHub CLI, the bundle, and scaffolds your workspace — for you. You'll see <strong>one</strong> macOS password dialog, <strong>one</strong> GitHub authorize tab, and <strong>one</strong> VS Code reload. That's it.</p>
         <a href="setup.md" download="marketing-bundle-setup.md" class="btn-primary installer-cta">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
           Download setup.md
@@ -355,46 +347,10 @@
         </ol>
       </div>
 
-      <div class="note">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-        <span><strong>Why this is better than the manual way.</strong> Claude Code knows where things install, what to add to your PATH, when to reload the window, and how to scaffold the workspace folder. It also handles the small failure modes that trip up first-timers — wrong folder casing, stale PATH, sudo prompts that hang in the terminal.</span>
+      <div class="note success">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
+        <span><strong>That's it.</strong> When Claude finishes setup, it'll hand you off to <code>/mkt-bundle-onboard-me</code>, which figures out your team and tailors a plan to you. Message Jake any time if you get stuck.</span>
       </div>
-
-      <!-- Manual fallback (collapsed) -->
-      <details class="manual-fallback">
-        <summary>Prefer to do it manually? Show terminal commands</summary>
-        <p class="step-desc" style="margin: 1rem 0;">Open the Terminal in VS Code (<strong>View → Terminal</strong>, or press <strong>Cmd + `</strong>) and paste each block in order.</p>
-        <p style="font-size: 0.875rem; font-weight: 600; color: var(--neutral-900); margin: 1.25rem 0 0.5rem;">a. Make sure Homebrew + GitHub CLI are installed</p>
-        <div class="code-block">
-          <button class="copy-btn" type="button" aria-label="Copy command">Copy</button>
-          <code><span class="code-comment"># If `brew --version` errors out, install Homebrew first:</span>
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-<span class="code-comment"># Then install gh:</span>
-brew install gh</code>
-        </div>
-        <p style="font-size: 0.875rem; font-weight: 600; color: var(--neutral-900); margin: 1.25rem 0 0.5rem;">b. Authenticate (a browser window will open)</p>
-        <div class="code-block">
-          <button class="copy-btn" type="button" aria-label="Copy command">Copy</button>
-          <code>gh auth login</code>
-        </div>
-        <p style="font-size: 0.875rem; color: var(--neutral-600); margin: 0.75rem 0 0; line-height: 1.55;">Choose: <strong>GitHub.com</strong> → <strong>HTTPS</strong> → <strong>Yes</strong> → <strong>Login with a web browser</strong>. Sign in with your <code>@domo.com</code> EMU account.</p>
-        <p style="font-size: 0.875rem; font-weight: 600; color: var(--neutral-900); margin: 1.25rem 0 0.5rem;">c. Verify, then clone + install the bundle</p>
-        <div class="code-block">
-          <button class="copy-btn" type="button" aria-label="Copy command">Copy</button>
-          <code><span class="code-comment"># Verify auth:</span>
-gh api user --jq .login
-
-<span class="code-comment"># Clone bundle + run the install script:</span>
-mkdir -p ~/.local/share/marketing-bundle-cache
-git clone --depth 1 https://github.com/jake-heaps_domo/marketing-bundle.git ~/.local/share/marketing-bundle-cache
-bash ~/.local/share/marketing-bundle-cache/scripts/install-on-laptop.sh</code>
-        </div>
-        <div class="note warning" style="margin-top: 1.5rem;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          <span><strong>After install, reload VS Code.</strong> Press <strong>Cmd + Shift + P</strong> → type <strong>"Developer: Reload Window"</strong> → Enter. Without this, Claude Code won't pick up the new permissions and you'll get a permission prompt on every command.</span>
-        </div>
-      </details>
     </div>
   </div>
 </section>
@@ -450,7 +406,7 @@ bash ~/.local/share/marketing-bundle-cache/scripts/install-on-laptop.sh</code>
 
       <div class="note success" style="margin-top: 2rem;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>
-        <span><strong>Stuck on Step 5?</strong> Use the <a href="setup.md" download="marketing-bundle-setup.md" style="color: #2c6e4d; font-weight: 700;">AI-driven installer</a> — Claude Code does the install for you, no terminal needed. Or message Jake any time to unblock.</span>
+        <span><strong>Stuck on any step?</strong> Message Jake at any time — happy to unblock you before the meeting.</span>
       </div>
     </div>
   </div>
