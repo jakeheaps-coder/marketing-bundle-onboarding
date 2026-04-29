@@ -170,6 +170,9 @@
     .installer-flow li::before { content: counter(install-step); position: absolute; left: 0; top: 0.45rem; width: 1.6rem; height: 1.6rem; border-radius: 50%; background: rgba(153,204,238,0.25); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; color: var(--domo-blue-dark); }
     .installer-flow li strong { color: var(--neutral-900); font-weight: 600; }
     .installer-flow li code { font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; font-size: 0.78rem; background: var(--neutral-50); padding: 0.08rem 0.35rem; border-radius: 4px; color: var(--neutral-900); border: 1px solid var(--neutral-100); }
+    .installer-copy { margin: 0.5rem 0 0 !important; padding: 0.85rem 1rem !important; padding-right: 4rem !important; border-radius: var(--radius-md) !important; }
+    .installer-copy code { background: transparent !important; border: none !important; padding: 0 !important; font-size: 0.8rem !important; color: #E8ECF0 !important; line-height: 1.5; }
+    .installer-copy .copy-btn { top: 0.45rem !important; right: 0.45rem !important; padding: 0.3rem 0.55rem !important; font-size: 0.7rem !important; }
 
 
     @media (max-width: 768px) {
@@ -340,7 +343,14 @@
         <ol class="installer-flow" aria-label="What happens after you download">
           <li><strong>Open Claude Code</strong> in VS Code (the panel with the orange star icon)</li>
           <li><strong>Drag <code>setup.md</code></strong> from your Downloads folder into the chat</li>
-          <li><strong>Type</strong> <code>follow this file</code> and press Enter</li>
+          <li><strong>Enable Admin Access</strong> from the checkmark in the top-right of your screen</li>
+          <li>
+            <strong>Type</strong> "Follow this file (marketing-bundle-setup.md) in downloads" and press Enter
+            <div class="code-block installer-copy">
+              <button class="copy-btn" type="button" aria-label="Copy prompt">Copy</button>
+              <code>Follow this file (marketing-bundle-setup.md) in downloads</code>
+            </div>
+          </li>
           <li><strong>Approve</strong> when macOS asks for your laptop password (one time)</li>
           <li><strong>Authorize</strong> GitHub when the browser tab opens (paste the code Claude gives you)</li>
           <li><strong>Reload</strong> VS Code when Claude tells you to (<code>Cmd + Shift + P</code> → "Developer: Reload Window")</li>
