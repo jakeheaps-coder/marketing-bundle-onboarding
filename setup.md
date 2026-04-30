@@ -330,9 +330,11 @@ chmod 600 ~/ai_projects/.env
 **Step 7.2 — Verify the pre-filled `KG_API_KEY` works** (should return JSON from the Knowledge Graph API):
 
 ```bash
-KG_KEY=$(grep ^KG_API_KEY ~/ai_projects/.env | cut -d= -f2)
+KG_KEY=$(grep ^KG_API_KEY ~/ai_projects/.env | cut -d= -f2-)
 curl -sf -H "X-API-Key: $KG_KEY" https://knowledge-graph-api-1053548598846.us-central1.run.app/api/products | head -c 200
 ```
+
+> Note: `cut -d= -f2-` (with the trailing dash) is intentional. The KG API key is base64-padded with a trailing `=`; using plain `cut -d= -f2` would truncate the key and the request would return 403.
 
 If you get JSON back (starts with `[` or `{`) → great, the key works.
 If 401/403 → STOP: "The pre-filled KG key didn't work. Message Jake — he may need to rotate the bundle's KG key."
