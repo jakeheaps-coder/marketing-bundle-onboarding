@@ -12,6 +12,8 @@ Announce each step in plain language before running it. Show short progress upda
 
 After each phase succeeds, print a single line: `✓ Phase N done`.
 
+**Important about flexibility:** **Phase 0.5 below is a short discovery section that adapts the install to the user.** Some teammates are already using Claude Code for other work; some have an existing dev folder; some want a different workspace location. Don't skip Phase 0.5 — it sets the variables that later phases use (especially `$WORKSPACE`, the bundle workspace folder). If the user says "just use defaults" → fine, use `~/ai_projects/` and move on, but at least *ask*.
+
 ---
 
 ## Phase 0 — Platform sanity check
@@ -39,6 +41,132 @@ echo "TERM_PROGRAM=${TERM_PROGRAM:-} VSCODE_PID=${VSCODE_PID:-}"
 If neither contains `vscode`, surface: "It looks like you're running Claude Code outside VS Code. The bundle is designed to install into VS Code. Open VS Code, install the Claude Code extension (Step 4 of the landing page), and re-run me from there."
 
 `✓ Phase 0 done`
+
+---
+
+## Phase 0.5 — Discovery (a few questions before I touch anything)
+
+> Tell the user: "Before I change anything on your laptop, three quick questions so I can adapt to your existing setup."
+
+### Question 1 — Are you already using Claude Code?
+
+Detect existing Claude Code state. Run all of these and capture results:
+
+```bash
+[ -d ~/.claude ] && echo "claude_dir=present"
+[ -f ~/.claude/CLAUDE.md ] && echo "personal_md=present"
+[ -L ~/.claude/CLAUDE.shared.md ] && echo "bundle_shared_md=symlinked_already"
+[ -f ~/.claude/settings.json ] && jq -r '._bundle_settings_version // "user-personal"' ~/.claude/settings.json 2>/dev/null
+[ -d ~/.claude/skills ] && ls ~/.claude/skills 2>/dev/null | wc -l
+```
+
+**Branch on what you find:**
+
+- **Bundle already installed** (`bundle_shared_md=symlinked_already` AND skill count > 600) → Switch to update mode. Run `bash ~/.local/share/marketing-bundle-cache/scripts/install-on-laptop.sh --update`. Skip Phases 1-7 entirely. Jump to Phase 9 sanity check. Tell the user: "You already have the bundle. I just refreshed it. Skipping ahead to verification."
+
+- **Existing Claude Code user with NO bundle** (`personal_md=present` and/or skills > 0, but no `bundle_shared_md`) → surface what's there:
+
+  > "I see you've already been using Claude Code:
+  > - Personal `~/.claude/CLAUDE.md`: present
+  > - Skills in `~/.claude/skills/`: `<N>` skills
+  > - Settings: `<bundle-version | user-personal | none>`
+  > - MCP servers: `<read from settings.json mcpServers keys>`
+  >
+  > The bundle install will:
+  > 1. Symlink ~619 new skills alongside your existing ones (custom skills preserved)
+  > 2. Symlink agents/hooks/rules into `~/.claude/`
+  > 3. Render a new `~/.claude/settings.json` with the bundle's allow-list + MCP servers — your current one gets backed up to `settings.json.local-backup-<timestamp>.json`
+  > 4. Add an `@~/.claude/CLAUDE.shared.md` import to your existing `~/.claude/CLAUDE.md` (your existing content is preserved above the import line)
+  >
+  > **Three options:**
+  > - **(a) Standard install** (recommended) — bundle's settings + your existing skills both work
+  > - **(b) Skip settings.json** — keep your existing settings; you'll need to manually add the bundle's allow-list + MCP servers later from `~/.local/share/marketing-bundle-cache/claude-config/settings.template.json`
+  > - **(c) Cancel** — don't install the bundle right now
+  >
+  > Which? (a/b/c)"
+
+  Save the answer as `INSTALL_MODE` (`standard` | `no-settings` | `cancel`).
+  - If `cancel` → STOP cleanly: "No problem, no changes made. Re-run setup.md any time."
+  - If `no-settings` → Phase 6 will pass `--no-settings` to install-on-laptop.sh.
+  - If `standard` → continue.
+
+- **Fresh Claude Code, just signed in** (`claude_dir=present` but empty/minimal) → tell user: "Looks fresh. I'll do a standard install." Set `INSTALL_MODE=standard`.
+
+- **Claude Code not installed at all** (`claude_dir` missing) → STOP: "I don't see Claude Code installed (`~/.claude` doesn't exist). Finish landing-page Step 4 first (install the Claude Code extension in VS Code + sign in), then re-run me."
+
+### Question 2 — Where do you want your bundle workspace folder?
+
+> Tell the user: "Where do you want your bundle workspace? This is where bundle skills will save outputs and where `mkt-bundle-onboard-me` will scaffold your first projects."
+>
+> "Default: `~/ai_projects/` (mirrors Jake's setup, recommended).
+> Or type a custom path like `~/work/marketing/`, `~/Documents/domo/`, `~/projects/ai/`, etc.
+>
+> Press Enter for default, or type the path."
+
+Save the answer as `WORKSPACE`. Defaults:
+
+```bash
+# If user hits Enter / says "default" / says nothing
+WORKSPACE="$HOME/ai_projects"
+
+# Otherwise expand ~ if user typed it
+WORKSPACE="${USER_INPUT/#~/$HOME}"
+```
+
+Validate the path is sane:
+
+```bash
+mkdir -p "$WORKSPACE" 2>&1 && echo "workspace_creatable" || echo "FAIL: cannot create $WORKSPACE"
+```
+
+If creation fails → STOP, surface the error, ask user for a different path.
+
+If the chosen folder **already exists with content** (`ls "$WORKSPACE" 2>/dev/null | wc -l` > 0), warn:
+
+> "I see existing files in `$WORKSPACE`. I'll add a `CLAUDE.md` (Claude Code's project context), a `.gitignore`, and a few empty subfolders (automations/, gemini/, etc.). I won't touch any of your existing files. OK? (yes/no)"
+
+If `no` → ask for a different path; loop back.
+If `yes` → continue.
+
+**Remember `$WORKSPACE` for Phases 5, 6, 7, 9.** All references to `~/ai_projects/` in those phases should use `$WORKSPACE` instead.
+
+### Question 3 — Anything else I should know?
+
+> Tell the user: "Last question. Anything I should know before I start? For example:
+> - An existing dev folder elsewhere you'd like Claude Code to know about
+> - A specific git identity you use (`git config user.email`)
+> - Particular skills you don't want overwritten
+> - Anything I should avoid touching
+>
+> Or just say `nothing` to continue."
+
+If user mentions a path, file, or setup detail:
+- Save it to a variable `USER_NOTES`
+- After Phase 6 (when `~/.claude/CLAUDE.md` exists), append a section to it:
+
+  ```bash
+  cat >> ~/.claude/CLAUDE.md <<EOF
+
+  ## User context (from setup.md Phase 0.5)
+
+  $USER_NOTES
+  EOF
+  ```
+
+  This way future Claude Code sessions know the context without the user having to re-explain.
+
+If user says `nothing` → skip the note.
+
+### Recap
+
+Tell the user, before continuing: "Got it. Here's what I'll do:
+- Install mode: **`<standard | no-settings>`**
+- Workspace folder: **`$WORKSPACE`**
+- Extra notes: **`<USER_NOTES | none>`**
+
+Starting now. The next ~10 minutes are mostly hands-off, except for: one macOS password dialog (Phase 1), one GitHub authorize tab (Phase 3), and one VS Code reload (Phase 8)."
+
+`✓ Phase 0.5 done — discovery complete`
 
 ---
 
@@ -242,25 +370,33 @@ Replace `<username>_domo` with their actual username (from `gh api user --jq .lo
 
 ---
 
-## Phase 5 — Create `~/ai_projects/` workspace (~5s)
+## Phase 5 — Create the workspace folder (~5s)
 
-> Tell the user: "Setting up your workspace folder. Everything you build will live in `~/ai_projects/`."
+> Use the `$WORKSPACE` variable from Phase 0.5. Default is `$HOME/ai_projects`.
 
-**Step 5.1 — Folder casing precheck.** If `~/AI_projects` or `~/Ai_Projects` exists but `~/ai_projects` doesn't, surface and ask:
+> Tell the user: "Setting up your workspace folder at **`$WORKSPACE`**."
+
+**Step 5.1 — Folder casing precheck (only when `$WORKSPACE` is the default `~/ai_projects/`).**
+
+If `$WORKSPACE` is `$HOME/ai_projects` (the default), check for capital-I variants:
 
 ```bash
-[ -d ~/AI_projects ] && [ ! -d ~/ai_projects ] && echo "uppercase_exists"
+if [ "$WORKSPACE" = "$HOME/ai_projects" ]; then
+  [ -d "$HOME/AI_projects" ] && [ ! -d "$HOME/ai_projects" ] && echo "uppercase_exists"
+fi
 ```
 
 If `uppercase_exists` → ask user: "I see `~/AI_projects` (capital I). The bundle conventions expect `~/ai_projects` (all lowercase). Rename it? **[y/n]**"
 
-- If `y`: `mv ~/AI_projects ~/ai_projects`
-- If `n`: STOP and surface: "Bundle conventions need lowercase. Either rename manually and re-run me, or message Jake."
+- If `y`: `mv "$HOME/AI_projects" "$HOME/ai_projects"`
+- If `n`: STOP and surface: "Bundle conventions need lowercase. Either rename manually and re-run me, choose a different `$WORKSPACE`, or message Jake."
+
+(If `$WORKSPACE` is a custom path, skip this check — the user picked it deliberately.)
 
 **Step 5.2 — Create the workspace folder + skeleton subfolders:**
 
 ```bash
-mkdir -p ~/ai_projects/{automations,gemini,knowledge_graphs,front-end-sites,other,shared}
+mkdir -p "$WORKSPACE"/{automations,gemini,knowledge_graphs,front-end-sites,other,shared}
 ```
 
 These are placeholders. They'll fill in as the user adopts skills. Don't create files yet — Phase 6's bundle install drops `CLAUDE.md` and `.gitignore` after cloning.
@@ -282,17 +418,21 @@ git clone --depth 1 https://github.com/jake-heaps_domo/marketing-bundle.git ~/.l
 
 If clone fails with auth error → STOP. The Phase 4 access check should have caught this; surface "Clone failed even though access check passed. Output above. Message Jake."
 
-**Step 6.2 — Run the install script:**
+**Step 6.2 — Run the install script.** Use the install mode from Phase 0.5 Q1:
 
 ```bash
-bash ~/.local/share/marketing-bundle-cache/scripts/install-on-laptop.sh
+if [ "$INSTALL_MODE" = "no-settings" ]; then
+  bash ~/.local/share/marketing-bundle-cache/scripts/install-on-laptop.sh --no-settings
+else
+  bash ~/.local/share/marketing-bundle-cache/scripts/install-on-laptop.sh
+fi
 ```
 
 This script handles:
-- Skill symlinks (~619 → `~/.claude/skills/`)
+- Skill symlinks (~619 → `~/.claude/skills/`) — preserves any custom Jake-local-style skills you already had
 - Agent / hook / rule symlinks
-- `~/.claude/CLAUDE.md` two-layer setup (your personal layer + `@~/.claude/CLAUDE.shared.md` import)
-- `~/.claude/settings.json` rendering from the bundle's `settings.template.json` (this is what gives Claude Code the allow-list so it stops asking permission on every Bash command)
+- `~/.claude/CLAUDE.md` two-layer setup (your existing personal layer is preserved; the `@~/.claude/CLAUDE.shared.md` import is appended if missing)
+- `~/.claude/settings.json` rendering from the bundle's `settings.template.json` *(skipped if `--no-settings`)*. The script auto-detects whether your existing settings.json is bundle-managed (sentinel present → safe to re-render) or user-personal (backed up to `.local-backup-<timestamp>.json` first)
 - `launchctl` job for 15-min auto-sync
 
 **Step 6.3 — Verify the install:**
@@ -305,32 +445,66 @@ test -f ~/.claude/settings.json && jq -r '._bundle_settings_version' ~/.claude/s
 
 Skill count should be > 600. `_bundle_settings_version` should be `1.0.0` or higher. If either fails → STOP, surface output, message Jake.
 
-**Step 6.4 — Drop the workspace `CLAUDE.md` and `.gitignore` from the bundle's vendored templates:**
+**Step 6.4 — Drop the workspace `CLAUDE.md` and `.gitignore` from the bundle's vendored templates** (only if not already present — don't overwrite existing files):
 
 ```bash
-cp ~/.local/share/marketing-bundle-cache/templates/ai_projects/CLAUDE.md ~/ai_projects/CLAUDE.md
-cp ~/.local/share/marketing-bundle-cache/templates/ai_projects/.gitignore ~/ai_projects/.gitignore
+[ -f "$WORKSPACE/CLAUDE.md" ] || cp ~/.local/share/marketing-bundle-cache/templates/ai_projects/CLAUDE.md "$WORKSPACE/CLAUDE.md"
+[ -f "$WORKSPACE/.gitignore" ] || cp ~/.local/share/marketing-bundle-cache/templates/ai_projects/.gitignore "$WORKSPACE/.gitignore"
+```
+
+If either file already existed (the user's existing workspace), leave it alone and tell the user: "Kept your existing `CLAUDE.md` / `.gitignore` in `$WORKSPACE`. Compare to the bundle's templates at `~/.local/share/marketing-bundle-cache/templates/ai_projects/` if you want to merge anything."
+
+**Step 6.5 — Append USER_NOTES to `~/.claude/CLAUDE.md`** (only if Phase 0.5 Q3 captured anything):
+
+```bash
+if [ -n "${USER_NOTES:-}" ]; then
+  cat >> ~/.claude/CLAUDE.md <<EOF
+
+## User context (from setup.md Phase 0.5)
+
+$USER_NOTES
+EOF
+fi
 ```
 
 `✓ Phase 6 done`
 
 ---
 
-## Phase 7 — Set up `~/ai_projects/.env` (~30s)
+## Phase 7 — Set up the workspace `.env` (~30s)
 
-> Tell the user: "Setting up your environment file with the public Knowledge Graph key pre-filled. The skill we hand off to next will fill in your team-specific keys (Domo, Apollo, Figma, Eloqua, etc.) based on what your team uses."
+> Tell the user: "Setting up your environment file at **`$WORKSPACE/.env`** with the public Knowledge Graph key pre-filled. The skill we hand off to next will fill in your team-specific keys (Domo, Apollo, Figma, Eloqua, etc.) based on what your team uses."
 
-**Step 7.1 — Copy the bundle's pre-populated env template:**
+**Step 7.1 — Copy the bundle's pre-populated env template** (only if no existing `.env` — don't overwrite the user's secrets):
 
 ```bash
-cp ~/.local/share/marketing-bundle-cache/templates/.env.example ~/ai_projects/.env
-chmod 600 ~/ai_projects/.env
+if [ -f "$WORKSPACE/.env" ]; then
+  echo "existing .env found at $WORKSPACE/.env — preserving"
+else
+  cp ~/.local/share/marketing-bundle-cache/templates/.env.example "$WORKSPACE/.env"
+  chmod 600 "$WORKSPACE/.env"
+fi
 ```
 
-**Step 7.2 — Verify the pre-filled `KG_API_KEY` works** (should return JSON from the Knowledge Graph API):
+If existing `.env` was found, surface to user: "I see you already have `$WORKSPACE/.env`. I left it alone (didn't want to clobber your secrets). The bundle's template is at `~/.local/share/marketing-bundle-cache/templates/.env.example` if you want to compare and merge missing keys." Verify the existing file has `KG_API_KEY` set:
 
 ```bash
-KG_KEY=$(grep ^KG_API_KEY ~/ai_projects/.env | cut -d= -f2-)
+grep -q ^KG_API_KEY "$WORKSPACE/.env" && echo "kg_key_present" || echo "kg_key_missing"
+```
+
+If `kg_key_missing` and existing file → tell user: "Your existing `.env` doesn't have a KG_API_KEY. I'll append the public one (it's not a secret per KG governance):"
+
+```bash
+echo "" >> "$WORKSPACE/.env"
+echo "# Knowledge Graph (public-tier inside Domo)" >> "$WORKSPACE/.env"
+grep ^KG_API_KEY ~/.local/share/marketing-bundle-cache/templates/.env.example >> "$WORKSPACE/.env"
+grep ^KG_API_URL ~/.local/share/marketing-bundle-cache/templates/.env.example >> "$WORKSPACE/.env"
+```
+
+**Step 7.2 — Verify the `KG_API_KEY` works** (should return JSON from the Knowledge Graph API):
+
+```bash
+KG_KEY=$(grep ^KG_API_KEY "$WORKSPACE/.env" | cut -d= -f2-)
 curl -sf -H "X-API-Key: $KG_KEY" https://knowledge-graph-api-1053548598846.us-central1.run.app/api/products | head -c 200
 ```
 
@@ -348,7 +522,16 @@ If timeout/network → WARN but continue (KG might be down; not a blocker).
 
 > **This is the only step the user does themselves. Stop and surface the instruction prominently.**
 
-Print this to the user, in **bold**, formatted as the most important thing on screen:
+**Step 8.0 — Persist Phase 0.5 state so Phase 9 can recover it post-reload:**
+
+```bash
+cat > ~/.local/share/marketing-bundle-cache/.setup-md-state <<EOF
+WORKSPACE="$WORKSPACE"
+INSTALL_MODE="${INSTALL_MODE:-standard}"
+EOF
+```
+
+Then print this to the user, in **bold**, formatted as the most important thing on screen:
 
 > ## 🔄 One thing for you to do
 >
@@ -372,12 +555,21 @@ Then **STOP**. The current Claude Code session is about to die when the user rel
 
 > Tell the user: "Welcome back. Final checks, then I'll hand you off."
 
-**Step 9.1 — Confirm everything is in place:**
+**Step 9.0 — Restore Phase 0.5 state from disk:**
+
+```bash
+[ -f ~/.local/share/marketing-bundle-cache/.setup-md-state ] && source ~/.local/share/marketing-bundle-cache/.setup-md-state
+echo "WORKSPACE=$WORKSPACE INSTALL_MODE=$INSTALL_MODE"
+```
+
+If state file is missing, default `WORKSPACE="$HOME/ai_projects"` and tell user we're falling back.
+
+**Step 9.1 — Confirm everything is in place** (use the `$WORKSPACE` from Phase 0.5):
 
 ```bash
 test -d ~/.local/share/marketing-bundle-cache && echo "bundle cache ok"
-test -d ~/ai_projects && echo "workspace ok"
-test -f ~/ai_projects/.env && echo "env ok"
+test -d "$WORKSPACE" && echo "workspace ok"
+test -f "$WORKSPACE/.env" && echo "env ok"
 test -L ~/.claude/CLAUDE.shared.md && echo "shared md ok"
 test -f ~/.claude/skills/mkt-bundle-onboard-me/SKILL.md && echo "onboard-me skill ok"
 ```
@@ -405,8 +597,8 @@ Print this final summary:
 > ## ✓ Setup complete
 >
 > - **619 skills** installed in `~/.claude/skills/`
-> - **`~/ai_projects/`** scaffolded as your workspace
-> - **`.env`** ready with public KG key pre-filled
+> - **`$WORKSPACE`** scaffolded as your workspace
+> - **`$WORKSPACE/.env`** ready with public KG key
 > - **15-min auto-sync** running so you stay current with bundle updates
 >
 > ## What's next
@@ -445,9 +637,21 @@ Don't try to recover. The 9 phases are designed so each builds on the previous; 
 
 ## Notes for Claude Code (not for the user)
 
-- This file expects to run in a fresh Claude Code session with permissive defaults. If you hit unexpected permission prompts during Phases 1-7, that's normal pre-Phase-8 behavior — just keep going. The user will Yes-click roughly 10 prompts in those phases. After Phase 8 reload, prompts disappear.
-- The user is on a fresh Mac with zero shell experience. Use plain English between commands. Avoid jargon ("PATH", "shellenv", "symlink", "MCP", "launchd") unless you immediately explain it.
+- **Phase 0.5 is the flexibility surface.** It captures three variables — `INSTALL_MODE` (standard | no-settings), `WORKSPACE` (workspace folder path), and `USER_NOTES` (free-form notes appended to `~/.claude/CLAUDE.md`) — that the rest of the file consumes. Don't skip Phase 0.5. If the user wants defaults, walk through it quickly anyway so the variables are set; they'll only be asked things they care about.
+- This file may run on a fresh laptop OR on a laptop where the teammate already uses Claude Code for other work. Phase 0.5 detects the difference and Phases 5-7 use existence-checks + skip-if-present semantics so you never overwrite the user's content (their `.env`, their `CLAUDE.md`, their custom skills).
+- The user MAY pick a non-default workspace path. Always reference `$WORKSPACE` in subsequent phases, not `~/ai_projects/`. The folder-casing precheck in Phase 5.1 only runs when `$WORKSPACE` is the default.
+- During Phase 0.5 Q3, if the user mentions a SPECIFIC path you should know about (e.g., "my real dev folder is at `~/work/`"), add it to `USER_NOTES` so Phase 6.5 appends it to `~/.claude/CLAUDE.md`. That makes future Claude Code sessions aware without the user re-explaining.
+- This file expects to run with permissive defaults. If you hit unexpected permission prompts during Phases 1-7, that's normal pre-Phase-8 behavior — just keep going. The user will Yes-click ~10 prompts in those phases. After Phase 8 reload, prompts disappear.
+- The user is on a Mac, often with limited shell experience. Use plain English between commands. Avoid jargon ("PATH", "shellenv", "symlink", "MCP", "launchd") unless you immediately explain it.
 - The `osascript` admin dialog in Phase 1 is a native macOS authentication dialog with a system-mediated lock icon. It is NOT Terminal.app and NOT a shell. The user types their laptop password into a system dialog box, clicks OK, and that's it.
-- The `gh auth login --web` device code flow is stock OAuth. The user pastes a 8-character code into a github.com page and clicks Authorize. No password is exchanged with Claude Code.
-- Phase 8 is a hard cut. The current Claude Code session ends when the user reloads. There is no API to trigger a reload from inside the session.
-- Phase 9 is designed to run in a fresh post-reload session with this file dragged in again. The user types "continue from Phase 9" and you skip to that phase.
+- The `gh auth login --web` device code flow is stock OAuth. The user pastes an 8-character code into a github.com page and clicks Authorize. No password is exchanged with Claude Code.
+- Phase 8 is a hard cut. The current Claude Code session ends when the user reloads. There is no API to trigger a reload from inside the session. **Important:** before Phase 8 ends, save `$WORKSPACE`, `$INSTALL_MODE`, and `$USER_NOTES` somewhere persistent (e.g., write them to `~/.local/share/marketing-bundle-cache/.setup-md-state` as a sourceable bash file) so Phase 9 (which runs in a NEW session after reload) can rehydrate them:
+
+  ```bash
+  cat > ~/.local/share/marketing-bundle-cache/.setup-md-state <<EOF
+  WORKSPACE="$WORKSPACE"
+  INSTALL_MODE="${INSTALL_MODE:-standard}"
+  EOF
+  ```
+
+  Then Phase 9 starts with `source ~/.local/share/marketing-bundle-cache/.setup-md-state` to recover them.
