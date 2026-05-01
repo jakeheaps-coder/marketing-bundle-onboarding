@@ -1,9 +1,9 @@
 # Marketing Bundle Setup — Run Me
 
-You are Claude Code, helping a marketing teammate at Domo set up their laptop on the **Domo Marketing Bundle** (~619 AI skills + agents + hooks for marketing work). The user has zero shell experience. Follow this file step-by-step, top to bottom. Do all of the work yourself via your Bash tool. **Do not ask the user to open a terminal at any point.** The only direct interactions the user should have are:
+You are Claude Code, helping a marketing teammate at Domo set up their laptop on the **Domo Marketing Bundle** (~619 AI skills + agents + hooks for marketing work). The user has limited shell experience. Follow this file step-by-step, top to bottom. Do all of the work yourself via your Bash tool *except* the one Terminal step in Phase 1 — Domo's MDM blocks fully-automated Homebrew install, so the user pastes one command into Terminal once, then comes back. The user's direct interactions are:
 
-1. **One native macOS admin password dialog** — when `osascript` pops it for the Homebrew install (this is a system dialog, not Terminal.app)
-2. **One browser tab** — to authorize GitHub via the device-code flow
+1. **One Terminal paste** — Phase 1 Homebrew install. Open Terminal, paste one command, type their laptop password once, wait. The only terminal step in the whole flow.
+2. **One browser tab** — to authorize GitHub via the device-code flow (Phase 3)
 3. **One VS Code keystroke** — `Cmd+Shift+P` → "Developer: Reload Window" at Phase 8
 
 If you hit a step you can't complete, **STOP** and tell the user exactly what failed and what you need from them. Do not improvise around environment issues. The design assumes the happy path; deviations from it are the user's signal to message Jake (jake.heaps@domo.com).
@@ -170,16 +170,16 @@ Starting now. The next ~10 minutes are mostly hands-off, except for: one macOS p
 
 ---
 
-## Phase 1 — Homebrew install + PATH register (~3 min, with admin password)
+## Phase 1 — Homebrew install + PATH register (~5 min, ONE Terminal step)
 
-> Tell the user: "Now I'm setting up Homebrew, the macOS package manager. Everything else installs through it."
+> Tell the user: "Now I'm setting up Homebrew, the macOS package manager. **This phase has the only Terminal step in the entire setup.** Domo's enterprise security tooling blocks the fully-automated install, so we do this one step manually — then I take over again for everything else."
 
 First, check if Homebrew is already installed:
 
 ```bash
-[ -x /opt/homebrew/bin/brew ] && echo "found_arm" || \
-[ -x /usr/local/bin/brew ] && echo "found_intel" || \
-echo "not_installed"
+[ -x /opt/homebrew/bin/brew ] && echo "found_arm" \
+|| [ -x /usr/local/bin/brew ] && echo "found_intel" \
+|| echo "not_installed"
 ```
 
 ### If `found_arm`:
@@ -187,15 +187,10 @@ echo "not_installed"
 ```bash
 eval "$(/opt/homebrew/bin/brew shellenv)"
 brew --version
-```
-
-Persist for future shells (idempotent — only adds if not already present):
-
-```bash
 grep -q 'brew shellenv' ~/.zprofile 2>/dev/null || echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
 ```
 
-Skip to Phase 2.
+Skip to Phase 2 with `✓ Phase 1 done (already installed)`.
 
 ### If `found_intel`:
 
@@ -205,47 +200,67 @@ brew --version
 grep -q 'brew shellenv' ~/.zprofile 2>/dev/null || echo 'eval "$(/usr/local/bin/brew shellenv)"' >> ~/.zprofile
 ```
 
-Skip to Phase 2.
+Skip to Phase 2 with `✓ Phase 1 done (already installed)`.
 
-### If `not_installed` (the fresh-Mac path):
+### If `not_installed` — Terminal step (the only one in setup.md)
 
-> Tell the user, in **bold**: "**I'm about to install Homebrew. macOS will pop a password dialog asking for your laptop password. Type it and click OK — that's the only password we'll need. Your terminal will not open. Just look for the dialog from System Authentication.**"
+**Important — do NOT attempt to install Homebrew yourself via your Bash tool.** Past sessions tried `osascript` admin dialogs, `NONINTERACTIVE=1`, and writing temporary `/etc/sudoers.d/` entries — all blocked by Domo's MDM sudo policy plugin (you'll see custom `sudoabr.log` and `sudo_lecture` defaults; multiple `(ALL) ALL` entries override any `NOPASSWD: ALL` you write). Each retry creates another password dialog without progress. The clean working path is: surface Terminal instructions, STOP, wait for the user.
 
-**Step 1.1 — Pre-cache sudo with osascript GUI dialog.** This pops a native macOS authentication dialog (not Terminal). User types password, clicks OK. Sudo is cached for ~5 min:
+> Surface this to the user, formatted as the most important thing on screen, **in bold**:
+>
+> ## 🖥️ One Terminal step (~5 min)
+>
+> **Homebrew install needs to run in your Terminal once.** Domo's enterprise security tooling blocks fully-automated install, so you'll do it manually — then I take over again.
+>
+> 1. Press **`Cmd + Space`**, type `Terminal`, press Enter. *(That opens macOS's built-in Terminal app. You can leave VS Code open in another window — both can be open at once.)*
+> 2. **Paste this command** into the Terminal window and press Enter:
+>    ```
+>    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+>    ```
+> 3. When it asks for your **laptop password**, type it and press Enter. *(You won't see characters as you type — that's normal macOS behavior. Just type and press Enter when done.)*
+> 4. When you see **`Press RETURN/ENTER to continue or any other key to abort:`**, press **Enter**.
+> 5. Wait **2–5 minutes** while it downloads. You'll see lots of `Receiving objects...` and `Resolving deltas...` lines — that's normal.
+>
+> **If it asks to install Xcode Command Line Tools first**, click **Install** in the popup and wait ~5 min for that to finish. Then re-run the same paste command.
+>
+> When you see **`==> Next steps:`** or **`Installation successful!`** at the bottom, you're done. Come back here and tell me **"brew is installed"** (or just paste the last few lines of Terminal output).
+
+**Then STOP.** Do not run any commands. Wait for the user to confirm.
+
+### When the user confirms (or pastes output containing "Installation successful" / "Next steps")
+
+Verify:
 
 ```bash
-osascript -e 'do shell script "/usr/bin/true" with administrator privileges with prompt "Marketing Bundle Setup needs your laptop password to install Homebrew (the macOS package manager). One-time install."'
+[ -x /opt/homebrew/bin/brew ] && echo "found_arm" \
+|| [ -x /usr/local/bin/brew ] && echo "found_intel" \
+|| echo "still_not_installed"
 ```
 
-If this errors with "User cancelled" → STOP and surface: "You cancelled the password dialog. I can't install Homebrew without your password. Re-run me when ready."
+If `still_not_installed` → ask the user (don't troubleshoot blindly):
 
-**Step 1.2 — Run brew installer with `NONINTERACTIVE=1`** (uses cached sudo so no terminal prompt):
+> "I don't see brew yet. A couple things to check:
+> 1. Did the Terminal output end with `==> Next steps:` or `Installation successful`? If not, can you paste the last 10 lines?
+> 2. In Terminal, run `which brew` — what does it say?
+> 3. The install can take longer than 5 min on slow connections. If it's still running, just wait."
 
-```bash
-NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-```
-
-This takes 1–2 minutes. Show user a "Installing Homebrew (1–2 min)..." update.
-
-**Step 1.3 — Eval brew into the current session** (the fix for the "brew not on your path" loop):
+If `found_arm` (Apple Silicon — the standard Domo laptop):
 
 ```bash
 eval "$(/opt/homebrew/bin/brew shellenv)"
-```
-
-**Step 1.4 — Persist for future shells:**
-
-```bash
 grep -q 'brew shellenv' ~/.zprofile 2>/dev/null || echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
-```
-
-**Step 1.5 — Verify:**
-
-```bash
 which brew && brew --version
 ```
 
-If this fails → STOP and surface: "Homebrew didn't install cleanly. Message Jake with the output above."
+If `found_intel` (older Mac):
+
+```bash
+eval "$(/usr/local/bin/brew shellenv)"
+grep -q 'brew shellenv' ~/.zprofile 2>/dev/null || echo 'eval "$(/usr/local/bin/brew shellenv)"' >> ~/.zprofile
+which brew && brew --version
+```
+
+The eval-into-current-session step makes brew available to subsequent phases without requiring another shell reload.
 
 `✓ Phase 1 done`
 
@@ -643,7 +658,7 @@ Don't try to recover. The 9 phases are designed so each builds on the previous; 
 - During Phase 0.5 Q3, if the user mentions a SPECIFIC path you should know about (e.g., "my real dev folder is at `~/work/`"), add it to `USER_NOTES` so Phase 6.5 appends it to `~/.claude/CLAUDE.md`. That makes future Claude Code sessions aware without the user re-explaining.
 - This file expects to run with permissive defaults. If you hit unexpected permission prompts during Phases 1-7, that's normal pre-Phase-8 behavior — just keep going. The user will Yes-click ~10 prompts in those phases. After Phase 8 reload, prompts disappear.
 - The user is on a Mac, often with limited shell experience. Use plain English between commands. Avoid jargon ("PATH", "shellenv", "symlink", "MCP", "launchd") unless you immediately explain it.
-- The `osascript` admin dialog in Phase 1 is a native macOS authentication dialog with a system-mediated lock icon. It is NOT Terminal.app and NOT a shell. The user types their laptop password into a system dialog box, clicks OK, and that's it.
+- Phase 1 is the only Terminal step. Do NOT try to automate the brew install — Domo's MDM sudo policy plugin blocks every workaround (osascript admin dialogs, `NONINTERACTIVE=1`, sudoers.d entries, sudo cache priming). The instructions surface a paste-and-wait flow; you wait for the user to confirm. After confirmation, all you do is `eval "$(brew shellenv)"` to register the binary in the current session.
 - The `gh auth login --web` device code flow is stock OAuth. The user pastes an 8-character code into a github.com page and clicks Authorize. No password is exchanged with Claude Code.
 - Phase 8 is a hard cut. The current Claude Code session ends when the user reloads. There is no API to trigger a reload from inside the session. **Important:** before Phase 8 ends, save `$WORKSPACE`, `$INSTALL_MODE`, and `$USER_NOTES` somewhere persistent (e.g., write them to `~/.local/share/marketing-bundle-cache/.setup-md-state` as a sourceable bash file) so Phase 9 (which runs in a NEW session after reload) can rehydrate them:
 
