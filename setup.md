@@ -1,6 +1,6 @@
 # Marketing Bundle Setup — Run Me
 
-You are Claude Code, helping a marketing teammate at Domo set up their laptop on the **Domo Marketing Bundle** (~619 AI skills + agents + hooks for marketing work). The user has limited shell experience. Follow this file step-by-step, top to bottom. Do all of the work yourself via your Bash tool *except* the one Terminal step in Phase 1 — Domo's MDM blocks fully-automated Homebrew install, so the user pastes one command into Terminal once, then comes back. The user's direct interactions are:
+You are Claude Code, helping a marketing teammate at Domo set up their laptop on the **Domo Marketing Bundle** (~560 AI skills + agents + hooks for marketing work). The user has limited shell experience. Follow this file step-by-step, top to bottom. Do all of the work yourself via your Bash tool *except* the one Terminal step in Phase 1 — Domo's MDM blocks fully-automated Homebrew install, so the user pastes one command into Terminal once, then comes back. The user's direct interactions are:
 
 1. **One Terminal paste** — Phase 1 Homebrew install. Open Terminal, paste one command, type their laptop password once, wait. The only terminal step in the whole flow.
 2. **One browser tab** — to authorize GitHub via the device-code flow (Phase 3)
@@ -73,7 +73,7 @@ Detect existing Claude Code state. Run all of these and capture results:
   > - MCP servers: `<read from settings.json mcpServers keys>`
   >
   > The bundle install will:
-  > 1. Symlink ~619 new skills alongside your existing ones (custom skills preserved)
+  > 1. Symlink ~560 new skills alongside your existing ones (custom skills preserved)
   > 2. Symlink agents/hooks/rules into `~/.claude/`
   > 3. Render a new `~/.claude/settings.json` with the bundle's allow-list + MCP servers — your current one gets backed up to `settings.json.local-backup-<timestamp>.json`
   > 4. Add an `@~/.claude/CLAUDE.shared.md` import to your existing `~/.claude/CLAUDE.md` (your existing content is preserved above the import line)
@@ -422,7 +422,7 @@ These are placeholders. They'll fill in as the user adopts skills. Don't create 
 
 ## Phase 6 — Clone bundle + run install-on-laptop.sh (~3 min)
 
-> Tell the user: "Cloning the bundle (~50 MB shallow clone) and running the install script. This adds 619 skills, hooks, agents, and rules into your Claude Code config. Sit tight — about 2-3 minutes."
+> Tell the user: "Cloning the bundle (~50 MB shallow clone) and running the install script. This adds 560 skills, hooks, agents, and rules into your Claude Code config. Sit tight — about 2-3 minutes."
 
 **Step 6.1 — Clone the bundle (shallow, ~50 MB):**
 
@@ -444,7 +444,7 @@ fi
 ```
 
 This script handles:
-- Skill symlinks (~619 → `~/.claude/skills/`) — preserves any custom Jake-local-style skills you already had
+- Skill symlinks (~560 → `~/.claude/skills/`) — preserves any custom Jake-local-style skills you already had
 - Agent / hook / rule symlinks
 - `~/.claude/CLAUDE.md` two-layer setup (your existing personal layer is preserved; the `@~/.claude/CLAUDE.shared.md` import is appended if missing)
 - `~/.claude/settings.json` rendering from the bundle's `settings.template.json` *(skipped if `--no-settings`)*. The script auto-detects whether your existing settings.json is bundle-managed (sentinel present → safe to re-render) or user-personal (backed up to `.local-backup-<timestamp>.json` first)
@@ -611,7 +611,7 @@ Print this final summary:
 
 > ## ✓ Setup complete
 >
-> - **619 skills** installed in `~/.claude/skills/`
+> - **560 skills** installed in `~/.claude/skills/`
 > - **`$WORKSPACE`** scaffolded as your workspace
 > - **`$WORKSPACE/.env`** ready with public KG key
 > - **15-min auto-sync** running so you stay current with bundle updates
