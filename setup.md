@@ -605,7 +605,23 @@ If Claude Code prompts you for permission on this trivial command → the settin
 launchctl list 2>/dev/null | grep com.domo-marketing.bundle-sync && echo "auto-sync ok"
 ```
 
-**Step 9.4 — Hand off:**
+**Step 9.4 — Confirm the 5 MCP servers are wired:**
+
+```bash
+jq -r '.mcpServers | keys[]' ~/.claude/settings.json 2>/dev/null
+```
+
+Expect: `asana`, `domoBasic`, `figma`, `github`, `webflow` (5 entries). Tell the user about the OAuth-on-first-use behavior so it doesn't surprise them later:
+
+> "**Five MCP servers are wired up:** `domoBasic`, `figma`, `asana`, `webflow`, `github`.
+>
+> The first time you use a skill that calls **figma**, **asana**, or **webflow**, a browser tab will pop up asking you to sign in. That's normal — it's OAuth. Sign in with your Domo account; tokens are cached afterward so you only do it once.
+>
+> **github** uses your `gh` keychain (already set up in Phase 3) — no browser pop-up.
+>
+> **domoBasic** uses a developer token from your `.env` (DOMO_BASIC_DEV_TOKEN). If that's blank, the next skill we hand off to (`/mkt-bundle-onboard-me`) will help you set it up."
+
+**Step 9.5 — Hand off:**
 
 Print this final summary:
 
